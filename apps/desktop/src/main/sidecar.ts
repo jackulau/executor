@@ -204,6 +204,9 @@ const writeSidecarManifest = (input: {
       startedAt: new Date().toISOString(),
       dataDir: input.dataDir,
       scopeDir: input.scopeDir,
+      // The desktop app manages this sidecar as its own child process; an OS
+      // service supervisor is never in the loop.
+      supervised: false,
       connection,
       owner: {
         client: "desktop",
@@ -470,9 +473,11 @@ const isDaemonReachable = async (origin: string): Promise<boolean> => {
  * child-less `SidecarConnection` flagged `supervisedDaemon: true`. Returns null
  * when no usable supervised daemon is present.
  *
- * Only a `cli-daemon` manifest is treated as supervised — a `desktop-sidecar`
- * manifest belongs to a managed sidecar (ours or another desktop instance) and
- * is handled by the existing single-instance / ownership logic.
+ * Only a supervised `cli-daemon` manifest is attachable here. A foreground
+ * `executor daemon` publishes `cli-daemon` too, but with `supervised: false`,
+ * so it is left alone. A `desktop-sidecar` manifest belongs to a managed
+ * sidecar (ours or another desktop instance) and is handled by the existing
+ * single-instance / ownership logic.
  */
 export async function attachToSupervisedDaemon(): Promise<SidecarConnection | null> {
   const dataDir = join(homedir(), ".executor");
@@ -505,7 +510,7 @@ export async function attachToSupervisedDaemon(): Promise<SidecarConnection | nu
     return null;
   }
 
-  if (!manifest || manifest.kind !== "cli-daemon") return null;
+  if (!manifest || manifest.kind !== "cli-daemon" || !manifest.supervised) return null;
 
   sidecarLog.warn(
     `supervised daemon at ${manifest.connection.origin} (pid ${manifest.pid}) did not answer the health probe; keeping its manifest because the process is still alive`,

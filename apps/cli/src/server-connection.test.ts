@@ -79,6 +79,7 @@ describe("CLI server connection", () => {
       startedAt: "2026-05-28T00:00:00.000Z",
       dataDir: "/tmp/executor",
       scopeDir: "/tmp/executor",
+      supervised: false,
       connection: parseCliExecutorServerConnection("http://127.0.0.1:4789", {
         EXECUTOR_AUTH_TOKEN: "desktop-token",
       }),
@@ -116,6 +117,7 @@ describe("CLI server connection", () => {
       startedAt: "2026-05-28T00:00:00.000Z",
       dataDir: "/tmp/executor",
       scopeDir: "/tmp/executor",
+      supervised: false,
       connection: parseCliExecutorServerConnection("http://127.0.0.1:4789", {
         EXECUTOR_AUTH_TOKEN: "desktop-token",
       }),

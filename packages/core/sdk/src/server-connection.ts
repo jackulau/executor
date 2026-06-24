@@ -54,6 +54,15 @@ export interface ExecutorLocalServerManifest {
   readonly startedAt: string;
   readonly dataDir: string;
   readonly scopeDir: string | null;
+  /**
+   * Whether an OS service supervisor (launchd, systemd, or the Windows service
+   * wrapper) owns this server's lifecycle. Set from EXECUTOR_SUPERVISED when the
+   * manifest is written. Desktop reads this, not `kind`, to decide whether to
+   * attach with supervised semantics: a foreground `executor daemon` and an
+   * OS-supervised daemon both publish `kind: "cli-daemon"`, so `kind` alone
+   * cannot tell them apart.
+   */
+  readonly supervised: boolean;
   readonly connection: ExecutorServerConnection;
   readonly owner: {
     readonly client: "cli" | "desktop";
@@ -180,6 +189,9 @@ const ExecutorLocalServerManifestJson = Schema.Struct({
   startedAt: Schema.String,
   dataDir: Schema.String,
   scopeDir: Schema.NullOr(Schema.String),
+  // Optional on the wire so manifests written before this field existed still
+  // decode; parseExecutorLocalServerManifest resolves the legacy default.
+  supervised: Schema.optional(Schema.Boolean),
   connection: ExecutorServerConnectionJson,
   owner: Schema.Struct({
     client: Schema.Literals(["cli", "desktop"]),
@@ -223,6 +235,10 @@ export const parseExecutorLocalServerManifest = (
     startedAt: parsed.startedAt,
     dataDir: parsed.dataDir,
     scopeDir: parsed.scopeDir,
+    // Legacy manifests (no `supervised`) predate the explicit signal; fall back
+    // to the old heuristic that treated every cli-daemon as supervised, so an
+    // already-running daemon is handled the same way across an upgrade.
+    supervised: parsed.supervised ?? parsed.kind === "cli-daemon",
     connection,
     owner: {
       client: parsed.owner.client,

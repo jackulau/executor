@@ -107,6 +107,7 @@ const writeSupervisedManifest = (port: number, token: string) => {
       startedAt: new Date().toISOString(),
       dataDir,
       scopeDir: process.env.EXECUTOR_SCOPE_DIR ?? dataDir,
+      supervised,
       connection,
       owner: {
         client: "desktop",

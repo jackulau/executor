@@ -70,6 +70,7 @@ describe("Executor server connection", () => {
       startedAt: "2026-05-28T00:00:00.000Z",
       dataDir: "/Users/rhys/.executor",
       scopeDir: "/Users/rhys/.executor",
+      supervised: false,
       connection: normalizeExecutorServerConnection({
         kind: "desktop-sidecar",
         key: "desktop-sidecar",
@@ -88,5 +89,79 @@ describe("Executor server connection", () => {
     ).toEqual(manifest);
     expect(parseExecutorLocalServerManifest("{")).toBeNull();
     expect(parseExecutorLocalServerManifest(JSON.stringify({ ...manifest, pid: -1 }))).toBeNull();
+  });
+
+  it("round-trips an explicit supervised cli-daemon", () => {
+    const manifest = {
+      version: 1 as const,
+      kind: "cli-daemon" as const,
+      pid: 4321,
+      startedAt: "2026-05-28T00:00:00.000Z",
+      dataDir: "/Users/rhys/.executor",
+      scopeDir: "/Users/rhys/.executor",
+      supervised: true,
+      connection: normalizeExecutorServerConnection({
+        origin: "http://127.0.0.1:4789",
+        auth: { kind: "bearer", token: "secret" },
+      }),
+      owner: {
+        client: "cli" as const,
+        version: "1.2.3",
+        executablePath: "/usr/local/bin/executor",
+      },
+    };
+
+    expect(
+      parseExecutorLocalServerManifest(serializeExecutorLocalServerManifest(manifest)),
+    ).toEqual(manifest);
+  });
+
+  it("preserves an explicit non-supervised cli-daemon through a round-trip", () => {
+    // A foreground `executor daemon` publishes kind: "cli-daemon" with
+    // supervised: false. The legacy `?? kind === "cli-daemon"` default must not
+    // override that explicit false, or desktop would drive a user-started
+    // daemon with supervised lifecycle semantics again (issue #1113).
+    const manifest = {
+      version: 1 as const,
+      kind: "cli-daemon" as const,
+      pid: 4321,
+      startedAt: "2026-05-28T00:00:00.000Z",
+      dataDir: "/Users/rhys/.executor",
+      scopeDir: "/Users/rhys/.executor",
+      supervised: false,
+      connection: normalizeExecutorServerConnection({
+        origin: "http://127.0.0.1:4789",
+      }),
+      owner: {
+        client: "cli" as const,
+        version: "1.2.3",
+        executablePath: "/usr/local/bin/executor",
+      },
+    };
+
+    expect(
+      parseExecutorLocalServerManifest(serializeExecutorLocalServerManifest(manifest)),
+    ).toEqual(manifest);
+  });
+
+  it("defaults supervised from kind for manifests written before the field existed", () => {
+    const legacy = (kind: "cli-daemon" | "desktop-sidecar" | "foreground") =>
+      JSON.stringify({
+        version: 1,
+        kind,
+        pid: 4321,
+        startedAt: "2026-05-28T00:00:00.000Z",
+        dataDir: "/Users/rhys/.executor",
+        scopeDir: "/Users/rhys/.executor",
+        connection: { origin: "http://127.0.0.1:4789" },
+        owner: { client: "cli", version: "1.2.3", executablePath: "/usr/local/bin/executor" },
+      });
+
+    // A legacy cli-daemon manifest keeps the old supervised assumption so an
+    // already-running daemon is handled the same way across an upgrade.
+    expect(parseExecutorLocalServerManifest(legacy("cli-daemon"))?.supervised).toBe(true);
+    // Foreground and desktop-sidecar servers were never supervised.
+    expect(parseExecutorLocalServerManifest(legacy("foreground"))?.supervised).toBe(false);
+    expect(parseExecutorLocalServerManifest(legacy("desktop-sidecar"))?.supervised).toBe(false);
   });
 });

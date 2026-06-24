@@ -292,6 +292,7 @@ const makeLocalServerManifest = (input: {
       startedAt: new Date().toISOString(),
       dataDir: resolveExecutorDataDir(path),
       scopeDir: currentScopeDirForManifest(),
+      supervised: process.env.EXECUTOR_SUPERVISED === "1",
       connection: input.connection,
       owner: {
         client: process.env.EXECUTOR_CLIENT === "desktop" ? "desktop" : "cli",

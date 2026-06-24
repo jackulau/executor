@@ -41,6 +41,7 @@ describe("local server manifest", () => {
           startedAt: "2026-05-28T00:00:00.000Z",
           dataDir,
           scopeDir: dataDir,
+          supervised: true,
           connection: normalizeExecutorServerConnection({
             origin: "http://localhost:4788",
           }),

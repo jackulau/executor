@@ -9,6 +9,7 @@ const manifest = {
   startedAt: "2026-06-18T00:00:00.000Z",
   dataDir: "C:\\Users\\rhys\\.executor",
   scopeDir: "C:\\Users\\rhys\\.executor",
+  supervised: true,
   connection: normalizeExecutorServerConnection({
     origin: "http://localhost:4789",
     auth: { kind: "bearer" as const, token: "secret" },
@@ -43,5 +44,14 @@ describe("resolveSupervisedDaemonAttach", () => {
     });
 
     expect(decision).toEqual({ kind: "remove-stale-manifest", pid: 1234 });
+  });
+
+  it("treats a non-supervised cli-daemon as unavailable even when reachable", async () => {
+    const decision = await resolveSupervisedDaemonAttach(
+      { ...manifest, supervised: false },
+      { isReachable: async () => true, isPidAlive: () => true },
+    );
+
+    expect(decision).toEqual({ kind: "unavailable" });
   });
 });

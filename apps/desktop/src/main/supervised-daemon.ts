@@ -18,7 +18,12 @@ export const resolveSupervisedDaemonAttach = async (
     readonly isPidAlive: (pid: number) => boolean;
   },
 ): Promise<SupervisedDaemonAttachDecision> => {
-  if (!manifest || manifest.kind !== "cli-daemon") return { kind: "unavailable" };
+  // A non-supervised cli-daemon (a foreground `executor daemon` a user started)
+  // must not be driven with supervised lifecycle semantics, even though it
+  // publishes the same kind as an OS-supervised daemon.
+  if (!manifest || manifest.kind !== "cli-daemon" || !manifest.supervised) {
+    return { kind: "unavailable" };
+  }
   const cliManifest = { ...manifest, kind: "cli-daemon" as const };
 
   if (await input.isReachable(cliManifest.connection.origin)) {
